@@ -1,22 +1,28 @@
-FROM debian:latest
+FROM debian:stretch-slim as steamcmd
 LABEL maintainer="James Swineson <docker@public.swineson.me>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG STEAMCMD_URL=https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
 
 # install packages
-RUN dpkg --add-architecture i386 \
-     && apt-get update -y \
-    && apt-get install -y --no-install-recommends ca-certificates lib32gcc1 lib32stdc++6 libcurl4-gnutls-dev:i386 wget tar supervisor \
-    && apt-get autoremove -y \
-     && apt-get clean -y \
-     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends ca-certificates wget
 
 # install steamcmd
 RUN mkdir -p /opt/steamcmd \
-    && wget "${STEAMCMD_URL}" -O /tmp/steamcmd.tar.gz \
-    && tar -xvzf /tmp/steamcmd.tar.gz -C /opt/steamcmd \
-    && rm -rf /tmp/*
+    && wget "${STEAMCMD_URL}" -O - | tar -xvz -C /opt/steamcmd
+
+FROM debian:stretch-slim
+
+# install packages
+RUN dpkg --add-architecture i386 \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends ca-certificates lib32gcc1 lib32stdc++6 libcurl4-gnutls-dev:i386 supervisor \
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=steamcmd /opt/steamcmd /opt/steamcmd
 
 # install helper tools
 COPY supervisor.conf /etc/supervisor/
